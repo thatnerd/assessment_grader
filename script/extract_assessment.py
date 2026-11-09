@@ -391,8 +391,9 @@ def main():
     elif len(form_page_counts) > 1:
         print(f"\n⚠ Quiz forms have differing page counts ({sorted(form_page_counts)}) — "
               "pending_images.py --pages assumes one fixed length; check the grouping by hand.")
-    print("\nNext: read the converted Markdown, then draft/verify rubric.md against it "
-          "(CLAUDE.md steps 1-2).")
+    print("\nNext: read the converted Markdown, then draft/verify the active rubric "
+          "against it — write a real rubric to rubric.local.md (git-ignored), not to "
+          "the tracked rubric.md template (CLAUDE.md steps 1-2).")
 
 
 if __name__ == "__main__":

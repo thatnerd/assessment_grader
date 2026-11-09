@@ -4,7 +4,17 @@ This project grades photographed quiz pages against a rubric and produces a
 printable, cut-and-staple PDF of per-student results.
 
 Directory layout:
-- `rubric.md` — the current rubric. **Read it fresh every time**, and
+- **The active rubric — `rubric.local.md` if it exists, otherwise
+  `rubric.md`.** A real, filled-in rubric contains the answers, and
+  `rubric.md` is tracked in git, so the working rubric for a live quiz
+  belongs in `rubric.local.md` (covered by `.gitignore`); `rubric.md`
+  stays the committed generic template. **Check for `rubric.local.md`
+  first, every session** — if it exists, it is the rubric, and the
+  template in `rubric.md` is not. When writing or correcting a rubric,
+  write it to `rubric.local.md`; never paste a real rubric into
+  `rubric.md`, which would stage three forms' answers for commit.
+- `rubric.md` — the generic template, and the fallback rubric when no
+  `rubric.local.md` exists. **Read the active rubric fresh every time**, and
   **cross-check it against the converted assessment in `assessment/` and
   against the actual student images, not just for internal
   self-consistency** — see Workflow step 2. It changes between
@@ -91,8 +101,11 @@ or re-render more than what's actually pending unless asked.
    enough, and cleans up any stale raw file left next to an already-
    extracted `.jpg`. Naturally handles 1 new image or many in the same run.
 
-2. **Read `rubric.md` and cross-check it against the actual assessment —
-   do this after step 1, with real images in hand, not in isolation.**
+2. **Read the active rubric — `rubric.local.md` if present, else
+   `rubric.md` — and cross-check it against the actual assessment; do
+   this after step 1, with real images in hand, not in isolation.**
+   Check for `rubric.local.md` before falling back: reading the template
+   while a real rubric sits beside it means grading against placeholders.
    Work out the header requirements and each problem's point breakdown
    fresh from this file every time; never assume a previous session's
    specific rubric still applies. Two separate checks, both required:
@@ -123,10 +136,11 @@ or re-render more than what's actually pending unless asked.
    rubric and the actual assessment — don't just raise it as an open
    question: **propose a specific suggested corrected rubric** (the exact
    replacement text, derived from the evidence) and get the user to
-   confirm before editing `rubric.md` or grading anything against it. This
-   check only needs doing once per rubric version — not on every
-   incremental append within the same quiz, only when `rubric.md` is new
-   or has changed since you last checked it.
+   confirm before editing the active rubric or grading anything against
+   it — and write the correction to `rubric.local.md`, not `rubric.md`.
+   This check only needs doing once per rubric version — not on every
+   incremental append within the same quiz, only when the active rubric is
+   new or has changed since you last checked it.
 
 3. **Find out what actually needs grading:**
    ```
@@ -294,12 +308,13 @@ or re-render more than what's actually pending unless asked.
        94%). Intended, but flag a large swing to the user.
 
      **`Name`'s point value is fixed, confirmed policy for whichever
-     rubric is currently in `rubric.md` — read it fresh from that file
-     every run, and never carry a previous quiz's `Name` value into a new
+     rubric is currently active (`rubric.local.md`, else `rubric.md`) —
+     read it fresh from that file every run, and never carry a previous quiz's `Name` value into a new
      rubric.** If the user asks to change any point total (a new quiz,
      more or fewer problems, reweighting which problems are required vs.
      extra credit), recompute `N` the same way and **show them the
-     arithmetic for explicit confirmation before editing `rubric.md`** —
+     arithmetic for explicit confirmation before editing the active
+     rubric** —
      the same standing rule that governs the `GRADE_SCALE` letter cutoffs
      below.
    - **Extra credit: a section can be marked `"extra_credit": true`** (see
@@ -574,16 +589,19 @@ students if they want it precise.
 ## Archiving a finished quiz
 
 Once a quiz is fully graded and the user is done with it, `images/`,
-`results/`, `assessment/`, and `rubric.md` can be moved out of the way to
-make room for the next one:
+`results/`, `assessment/`, and both rubric files can be moved out of the
+way to make room for the next one:
 ```
 python3 script/archive_quiz.py <name>
 ```
 Moves everything into `archive_<name>/` (as `archive_<name>/images/`,
 `archive_<name>/results/`, `archive_<name>/assessment/`,
-`archive_<name>/rubric.md`) and leaves fresh empty
-`images/`/`results/`/`assessment/` directories and an empty `rubric.md`
-behind, ready for the next quiz's source and rubric. Refuses to run if
+`archive_<name>/rubric.md`, `archive_<name>/rubric.local.md`) and leaves
+fresh empty `images/`/`results/`/`assessment/` directories and an empty
+`rubric.md` behind, ready for the next quiz's source and rubric.
+**`rubric.local.md` is archived, not left in place** — a stale rubric
+sitting beside the next quiz's assessment is a real hazard, since it
+reads as current and its answers belong to a different test. Refuses to run if
 `archive_<name>/` already exists, so it never silently overwrites a
 previous archive. Only do this when the user asks to archive/finish up a
 quiz, not as part of routine grading — it's a project-reorganizing step,

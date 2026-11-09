@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Archive a finished quiz: move images/, results/, assessment/, and
-rubric.md into archive_<name>/, then leave fresh empty images/, results/
-and assessment/ directories and an empty rubric.md behind so the project
-is ready for the next quiz.
+"""Archive a finished quiz: move images/, results/, assessment/, and both
+rubric files into archive_<name>/, then leave fresh empty images/,
+results/ and assessment/ directories and an empty rubric.md behind so the
+project is ready for the next quiz.
+
+rubric.local.md (the real, answer-bearing rubric, git-ignored) is archived
+alongside rubric.md rather than left behind: a stale rubric sitting next to
+the next quiz's assessment reads as current, and its answers belong to a
+different test.
 
 Usage:
     python3 script/archive_quiz.py <name> [--dry-run]
@@ -13,6 +18,7 @@ Example:
        archive_degrees-radians/results/...
        archive_degrees-radians/assessment/...
        archive_degrees-radians/rubric.md
+       archive_degrees-radians/rubric.local.md
 
 rosters/ is deliberately left alone: rosters track students across quizzes,
 not one quiz. assessment/ does move, since the converted quiz and answer
@@ -45,7 +51,9 @@ def main():
     ap.add_argument("--images-dir", default="images", help="Source images directory (default: images)")
     ap.add_argument("--results-dir", default="results", help="Source results directory (default: results)")
     ap.add_argument("--assessment-dir", default="assessment", help="Source assessment directory (default: assessment)")
-    ap.add_argument("--rubric", default="rubric.md", help="Source rubric file (default: rubric.md)")
+    ap.add_argument("--rubric", default="rubric.md", help="Source rubric template (default: rubric.md)")
+    ap.add_argument("--local-rubric", default="rubric.local.md",
+                    help="Real, git-ignored rubric, archived too if present (default: rubric.local.md)")
     ap.add_argument("--dry-run", action="store_true", help="Show what would move without moving anything")
     args = ap.parse_args()
 
@@ -53,6 +61,7 @@ def main():
     results_dir = Path(args.results_dir)
     assessment_dir = Path(args.assessment_dir)
     rubric_path = Path(args.rubric)
+    local_rubric_path = Path(args.local_rubric)
     archive_dir = Path(args.dest_root) / f"archive_{args.name}"
 
     if archive_dir.exists():
@@ -64,6 +73,7 @@ def main():
         ("results", results_dir, True),
         ("assessment", assessment_dir, True),
         ("rubric.md", rubric_path, False),
+        (local_rubric_path.name, local_rubric_path, False),
     ]:
         if not src.exists():
             print(f"  (skipping {label}: {src} does not exist)")
@@ -75,8 +85,8 @@ def main():
 
     if not sources:
         sys.exit(
-            "nothing to archive — images/, results/, assessment/, and rubric.md "
-            "are all missing or empty"
+            "nothing to archive — images/, results/, assessment/, and the "
+            "rubric files are all missing or empty"
         )
 
     print(f"{'Would move' if args.dry_run else 'Moving'} into {archive_dir}/:")
