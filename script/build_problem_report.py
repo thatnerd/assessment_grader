@@ -33,6 +33,9 @@ from pathlib import Path
 
 from weasyprint import HTML
 
+sys.path.insert(0, str(Path(__file__).parent))
+from build_pdf import clean_points  # noqa: E402
+
 BUCKETS = ["correct", "partial", "wrong", "off_topic", "blank"]
 BUCKET_LABEL = {
     "correct": "Correct", "partial": "Partial", "wrong": "Wrong",
@@ -50,8 +53,11 @@ def esc(s):
 
 def section_bucket(section):
     criteria = section.get("criteria", [])
-    total = sum(c["points"] for c in criteria)
-    earned = sum(c["points"] for c in criteria if c.get("earned"))
+    # Round before comparing: with fractional criteria, binary float
+    # summation makes `earned == total` false for a full-credit section
+    # (0.1 + 0.2 != 0.3), which would misreport it as partial.
+    total = clean_points(sum(c["points"] for c in criteria))
+    earned = clean_points(sum(c["points"] for c in criteria if c.get("earned")))
     if total == 0:
         return None
     if earned == total:

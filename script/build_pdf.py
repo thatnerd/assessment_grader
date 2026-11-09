@@ -79,6 +79,13 @@ JSON schema (see script/grades.example.json for a filled-in example):
   ]
 }
 
+Points — on a criterion or an adjustment — may be fractional (0.5, 2.25).
+Values are rounded to the cent for display and summation, and a whole
+number is collapsed, so 2.0 renders as "2". Note that a criterion's
+"earned" is strictly boolean: to express partial credit *within* one
+criterion, split it into several cumulative criteria rather than inventing
+a fractional value.
+
 A section's max points = sum of its criteria's points. A student's total
 = sum of all section points earned (required *and* extra-credit sections
 both count toward this) + sum of adjustment points (adjustments are
@@ -160,6 +167,16 @@ def clean_points(x):
     return int(x) if x == int(x) else x
 
 
+def signed_points(x):
+    """Render a points value with an explicit sign, for adjustments.
+
+    Fractional adjustments are legal (e.g. a -0.5 deduction), so this must
+    not use ":+d", which raises ValueError on a float. A bare ":+" formats
+    ints and floats alike, and clean_points first strips float noise and
+    collapses a whole number so -2.0 renders as "-2" rather than "-2.0"."""
+    return f"{clean_points(x):+}"
+
+
 def section_totals(section):
     earned = sum(c["points"] for c in section["criteria"] if c.get("earned"))
     maximum = sum(c["points"] for c in section["criteria"])
@@ -172,9 +189,11 @@ def render_inline_section(section):
     for c in section["criteria"]:
         ok = bool(c.get("earned"))
         cls = "ok" if ok else "no"
-        pts = c["points"] if ok else 0
+        pts = clean_points(c["points"]) if ok else 0
         mark = CHECK if ok else CROSS
-        chips.append(f'<span class="{cls}">{esc(c["label"])} {pts}/{c["points"]} {mark}</span>')
+        chips.append(
+            f'<span class="{cls}">{esc(c["label"])} {pts}/{clean_points(c["points"])} {mark}</span>'
+        )
     detail = section.get("detail", "")
     detail_html = f'<span class="detail">&mdash; {esc(detail)}</span>' if detail else ""
     return (
@@ -278,7 +297,7 @@ def render_student(student):
     grade_html = f'<span class="scoregrade">{pct:.0f}% &middot; {grade}</span>'
 
     if adjustments:
-        adj_desc = ", ".join(f'{a["label"]} {a["points"]:+d}' for a in adjustments)
+        adj_desc = ", ".join(f'{a["label"]} {signed_points(a["points"])}' for a in adjustments)
         score_html = (
             f'<div class="score"><span class="scoremain">{final_total} / {total_max}</span>'
             f'{grade_html}'
