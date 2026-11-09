@@ -218,3 +218,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------------------
+# Student data — NEVER commit any of this (names, handwriting, grades)
+# ---------------------------------------------------------------------------
+# Quiz photos (raw and extracted)
+/images/*
+!/images/.placeholder
+*.heic
+*.HEIC
+*.heif
+*.HEIF
+# Grading output: grades.json, grades.pdf, sorted_grades.md,
+# problem_breakdown.pdf, student_files.json
+/results/*
+!/results/.placeholder
+# Class rosters (real student names)
+/rosters/*
+!/rosters/.placeholder
+# Archived quizzes (archive_quiz.py moves images/results/rubric here)
+/archive_*/
+# Source assessment PDFs / answer keys in the project root
+/*.pdf
+# Your real, quiz-specific rubric (rubric.md is only a generic template)
+rubric.local*.md
