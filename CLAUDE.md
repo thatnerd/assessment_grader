@@ -53,6 +53,17 @@ in, etc.). Every step below is designed to be safe to re-run and to only
 touch what's new; never assume you're starting from zero, and never regrade
 or re-render more than what's actually pending unless asked.
 
+## Python environment
+
+**Run every script with the `py3` virtualenv's interpreter,
+`~/.virtualenvs/py3/bin/python`, not the system `python3`.** The system
+Python lacks Pillow, pillow-heif and weasyprint (from
+`script/requirements.txt`), so `extract_images.py`, `crop.py`,
+`build_pdf.py` and the rest fail with `ModuleNotFoundError` under it. The
+commands below are written as `python3 script/...` for readability;
+substitute the venv interpreter when you run them, e.g.
+`~/.virtualenvs/py3/bin/python script/extract_images.py`.
+
 ## Workflow
 
 0. **Convert the assessment source, if the user uploaded a new quiz.**
