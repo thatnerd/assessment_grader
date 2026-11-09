@@ -5,8 +5,9 @@ printable, cut-and-staple PDF of per-student results.
 
 Directory layout:
 - `rubric.md` — the current rubric. **Read it fresh every time**, and
-  **cross-check it against the actual assessment images, not just for
-  internal self-consistency** — see Workflow step 2. It changes between
+  **cross-check it against the converted assessment in `assessment/` and
+  against the actual student images, not just for internal
+  self-consistency** — see Workflow step 2. It changes between
   runs (different problems, different point values, different header
   requirements) — never assume a previous session's specific rubric (e.g.
   "convert π/2 rad to degrees") still applies. If it's inconsistent —
@@ -15,6 +16,15 @@ Directory layout:
   grading against something you know is wrong.
 - `images/` — one photo per student, named freely (e.g. `IMG_1234.jpg`).
   New batches typically arrive as `.HEIC`/`.HEIF` (iPhone) files here.
+- `assessment/` — the assessment *itself* (not student work), converted to
+  a standard format by `script/extract_assessment.py` — see Workflow
+  step 0. `assessment/source/` holds the raw upload exactly as given (PDF,
+  `.md`, `.txt`, photos, or a `.zip` of them); `assessment/form-<id>.md`
+  and `assessment/key-<id>.md` are the converted quiz forms and answer
+  keys; `assessment/pages/<doc>/page-N.jpg` is a render of every page.
+  This is the authoritative statement of what the quiz says — prefer it
+  over reconstructing the quiz from student handwriting. Archived along
+  with the quiz (unlike `rosters/`).
 - `rosters/*.json` — one file per class, holding canonical student name
   spellings. Durable across quizzes (not archived with the rest — see
   "Class rosters" below). Check it as part of grading, not just when asked.
@@ -34,6 +44,40 @@ touch what's new; never assume you're starting from zero, and never regrade
 or re-render more than what's actually pending unless asked.
 
 ## Workflow
+
+0. **Convert the assessment source, if the user uploaded a new quiz.**
+   This runs **once per quiz**, not once per batch — skip it when
+   `assessment/` already holds the converted forms for the quiz you are
+   grading.
+   ```
+   python3 script/extract_assessment.py
+   ```
+   Reads whatever was dropped into `assessment/source/` (PDF, `.md`,
+   `.txt`, an image, or a `.zip` of them — a zip is unpacked
+   automatically) and writes one Markdown file per document plus a render
+   of every page. A PDF with a text layer converts instantly and
+   losslessly; one without is flagged **needs transcription**, and you
+   must read its page images and transcribe them before grading against
+   it.
+
+   **Then read the converted Markdown** — producing it is not the point,
+   using it is. Two things it tells you that nothing else will:
+   - **How many forms/versions exist.** If the script reports more than
+     one, their answers differ and step 5's form detection is mandatory.
+   - **How many pages each form is** — that is the `--pages N` for step 3,
+     better than guessing from the image count.
+
+   **Figures do not survive text extraction.** Triangles, graphs and
+   number lines are usually vector line art, so the converted text keeps
+   the side labels but loses the geometry — which side is opposite or
+   adjacent simply isn't in the text. For any figure-shaped problem, read
+   the page render beside that page's text (`assessment/pages/...`) and
+   use `script/crop.py` to zoom in. Never grade a figure problem from
+   extracted text alone.
+
+   If `assessment/` is empty and the user hasn't uploaded anything, that's
+   fine — the rest of the workflow still works, and step 2 falls back to
+   cross-checking the rubric against student images alone.
 
 1. **Extract new images, if any raw photos were added:**
    ```
@@ -56,14 +100,24 @@ or re-render more than what's actually pending unless asked.
      its point-breakdown text — same numbers, same expected answers? This
      alone has been wrong before (a rubric whose problem statement and
      point breakdown described different numbers).
-   - **Cross-check against the assessment**: before settling on your
-     understanding, view at least a handful of the newly extracted images
-     (all of them, if the batch is small) and confirm the rubric's stated
-     problem(s)/numbers genuinely match what's printed on the actual quiz
-     pages — this naturally feeds into grading, it isn't a wasted extra
-     pass. This has caught a real mismatch before: a rubric that said
-     "210 degrees" when the printed quiz actually said "270 degrees",
-     only discovered once multiple students' answers all converged on 270.
+   - **Cross-check against the converted assessment**: when `assessment/`
+     holds a converted quiz (step 0), check the rubric against
+     `assessment/form-*.md`. That is the printed text of the quiz itself,
+     so a mismatch is decidable on the spot instead of being inferred from
+     handwriting. **Check every form, not just the first** — a multi-form
+     quiz has different numbers and different correct answers per form,
+     and a rubric covering only one form will silently mis-grade everyone
+     who sat another. Compare figure-shaped problems against the page
+     render, not the extracted text.
+   - **Then spot-check against real student pages**: view at least a
+     handful of the newly extracted images (all of them, if the batch is
+     small) and confirm students were actually handed the forms you just
+     read — this naturally feeds into grading, it isn't a wasted extra
+     pass. It is what catches an uploaded source that isn't what got
+     printed and distributed. When `assessment/` is empty this is your
+     *only* cross-check and carries the full weight: a rubric once said
+     "210 degrees" where the printed quiz said "270 degrees", caught only
+     once multiple students' answers all converged on 270.
 
    If you find **any** inconsistency this way — internal, or between the
    rubric and the actual assessment — don't just raise it as an open
@@ -84,6 +138,8 @@ or re-render more than what's actually pending unless asked.
    this rather than assuming "new images" means "everything in `images/`."
    **If this is a multi-page test** (see below), pass `--pages N` so it
    groups images N at a time instead of treating each as its own student.
+   Step 0 reports the right `N` for the converted forms — prefer that over
+   inferring it.
    **If it warns about gaps or non-consecutive filenames, see "Multi-page
    tests" below before trusting the grouping** — don't assume the warning
    is cosmetic.
@@ -115,6 +171,21 @@ or re-render more than what's actually pending unless asked.
    (`x0 y0 x1 y1` are fractions of the image, top-left origin.)
 
    Grading fidelity rules:
+   - **Multi-form quizzes: read each student's form before grading them.**
+     When step 0 reported more than one form, the forms share structure,
+     ordering and point values but carry **different numbers and different
+     correct answers** — e.g. one form's Q1 uses the points (9, 15) and
+     (18, 27) while another uses (1, 2) and (2, 5). The form is printed on
+     the student's own page, typically as a `FORM <digits>` marking in a
+     page corner and again in the title line. Read it per student, grade
+     that student against *their* `assessment/form-<id>.md` and
+     `key-<id>.md`, and record it as `"form": "<id>"` on their entry (the
+     strip prints it). Never assume a batch is all one form, and never let
+     one form's answers leak into another's grading — that is the easiest
+     way to mark correct papers wrong at scale, and it fails silently. If
+     a student's form marking is missing or unreadable, identify the form
+     by matching the printed problem values against each converted form's
+     text, and say so in that student's `notes`.
    - Grade exactly what's on the page against exactly what the rubric
      says. A correct final answer doesn't retroactively earn credit for a
      missing required step, and a shown step doesn't earn credit if the
@@ -158,92 +229,114 @@ or re-render more than what's actually pending unless asked.
      blank/off-topic/wrong/partial/correct breakdown — see that script's
      docstring and "Problem-by-problem breakdown" below.
    - **Grade floor: baked into the rubric's `Name` criterion, not a
-     post-hoc adjustment.** District policy requires no student's score
-     drop below 53% of the quiz's total possible points — the minimum
+     post-hoc adjustment.** District policy requires that no student's
+     score drop below **53% of the quiz's required total** — the minimum
      exists to keep a single F from being weighted too heavily against a
-     student's overall grade. Rather than computing a score and then
-     raising it after the fact, the rubric assigns `Name` a fixed point
-     value chosen so that a legible name *by itself* already clears 53% of
-     the quiz's total (name points + every other problem's points
-     combined) — any additional correct work on top of that only raises
-     the score further, never needs correcting down. **Grade `Name` as an
-     ordinary checklist section**, same as any other problem, with a
-     single criterion labeled just `"Name"` (not a longer description):
-     full points if the student made any legible attempt at a name
-     (first/last, nickname, initials — doesn't need to be fully
+     student's overall grade. This holds for *every* assignment graded in
+     this project, whatever its point total: the floor is always 53%, and
+     only the point value implementing it changes from rubric to rubric.
+
+     Rather than scoring a quiz and then raising a low score after the
+     fact, the rubric gives `Name` a fixed point value large enough that a
+     legible name *by itself* already clears 53% of the required total
+     (`Name`'s points + every required problem's points). Because those
+     floor points sit **inside** the percentage denominator, the floor
+     behaves as a starting point rather than a clamp:
+     - A student who earns nothing else lands at the floor (just over
+       53%).
+     - **Every further point earned strictly raises that student's
+       percentage above the floor** — no amount of correct work is ever
+       absorbed, capped, or corrected back down.
+
+     Never implement the floor by scoring normally and then bumping a low
+     score up to 53% afterwards: that flattens everyone at or below the
+     floor to the same percentage, so a student who got some work right
+     scores identically to one who turned in nothing. Avoiding exactly
+     that is the point of this design.
+
+     **Grade `Name` as an ordinary checklist section**, same as any other
+     problem, with a single criterion labeled just `"Name"` (not a longer
+     description): full points if the student made any legible attempt at
+     a name (first/last, nickname, initials — doesn't need to be fully
      readable), zero only if there's no name at all anywhere on the
-     packet. Do **not** add a
-     separate `adjustments` floor-raise entry anymore — that mechanism is
-     obsolete now that `Name` itself supplies the floor. (A packet with
-     *no name at all*, not even an illegible attempt, won't reach the
-     floor this way — flag that to the user rather than inventing a
-     workaround.)
+     packet. Do **not** add a separate `adjustments` floor-raise entry for
+     an ordinary submission — that mechanism is obsolete now that `Name`
+     itself supplies the floor. (A packet with *no name at all*, not even
+     an illegible attempt, won't reach the floor this way — flag that to
+     the user rather than inventing a workaround.)
+   - **Deriving `Name`'s point value — recompute it for every rubric.**
+     Let `W` be the sum of every **required** (non-extra-credit) problem's
+     points. `Name` gets the smallest integer `N` satisfying
+
+         N / (N + W) >= 0.53     equivalently     N = ceil(53 * W / 47)
+
+     and the quiz's required total becomes `N + W`. Worked example with
+     made-up numbers: if the required problems total `W = 100`, then
+     `N = ceil(5300 / 47) = ceil(112.77) = 113`. Check it from both sides
+     — `113/213 = 53.05%` clears the floor, `112/212 = 52.83%` does not —
+     so `Name` = 113 and the required total is 213.
+
+     Work that ceiling out in **exact integer arithmetic** — `-(-53 * W //
+     47)` in Python. Evaluating it in floating point (`math.ceil(0.53 * W
+     / 0.47)`) overshoots by one whenever `W` is a multiple of 47, because
+     `53W/47` is exactly an integer there and binary rounding nudges it
+     over: at `W = 141` the correct `N` is 159 (`159/300` is exactly
+     53.000%), but the float form returns 160.
+
+     Two consequences of that arithmetic, worth knowing and neither a bug:
+     - `N` is also the floor expressed **in points**: the smallest integer
+       that is at least 53% of the required total `N + W` is exactly `N`,
+       always, by construction. So there is no second number to work out
+       for the penalty check below — it's just `N`.
+     - Every required problem's share of the quiz shrinks as `N` grows
+       relative to `W`, which means the policy compresses high scores
+       upward too, not only low ones (an unfloored 88% can land near
+       94%). Intended, but flag a large swing to the user.
+
+     **`Name`'s point value is fixed, confirmed policy for whichever
+     rubric is currently in `rubric.md` — read it fresh from that file
+     every run, and never carry a previous quiz's `Name` value into a new
+     rubric.** If the user asks to change any point total (a new quiz,
+     more or fewer problems, reweighting which problems are required vs.
+     extra credit), recompute `N` the same way and **show them the
+     arithmetic for explicit confirmation before editing `rubric.md`** —
+     the same standing rule that governs the `GRADE_SCALE` letter cutoffs
+     below.
    - **Extra credit: a section can be marked `"extra_credit": true`** (see
      `script/build_pdf.py`'s docstring for the exact schema). Its earned
      points still add to a student's total, but its max points are
      **excluded from the percentage denominator** everywhere (per-student
      and class statistics both) — so it only ever helps, never required to
-     reach 100%. When computing `Name`'s floor value (below), "every other
-     problem's points" means only the **required** (non-extra-credit)
-     problems — extra credit doesn't count toward the total that `Name`
-     needs to clear 53% of, since a student who skips all of it entirely
-     must still be able to reach the floor from required work alone.
-   - **This point value is a fixed, confirmed policy for the current
-     rubric** (currently, for "Unit Test: Lines, Radians, and
-     Right-Triangle Trig": Name = 113 points, required total = 213
-     points [Name + the test's own 100 points: Part A 15 + Part B 24 +
-     Part C 34 + Part D 27], up to 10 more available as extra credit
-     [one problem, unchanged] — this test prints no dedicated Name line
-     item of its own, so Name was added after grading, per the user's
-     explicit request on 2026-10-19, specifically so that signing the
-     test alone is worth exactly the 53% floor and every point of actual
-     work adds on top rather than being capped there once the floor is
-     cleared. Confirmed with the user that this mathematically raises
-     *every* student's percentage, not just previously-floored ones
-     (e.g. an unfloored 88% became 94.4%) — an intended consequence of
-     this design, not a bug; see `rubric.md`'s header note for the full
-     derivation. This is this quiz's own number, not a carryover from a
-     previous quiz — recompute fresh for every new
-     rubric, the same way, rather than reusing a prior quiz's Name value).
-     **If the user
-     ever asks to change the point totals (a new quiz, more/fewer
-     problems, reweighting which problems are required vs. extra credit,
-     etc.), recompute `Name` the same way — smallest integer N solving
-     N/(N + sum of every *required* problem's points) ≥ 0.53 — and show
-     the user the arithmetic for explicit confirmation before editing
-     `rubric.md`,** the same standing rule used for the `GRADE_SCALE`
-     letter cutoffs below. This also means every other required problem's
-     percentage share of the quiz shrinks whenever `Name` is a large
-     fraction of the required total — that's an expected consequence of
-     this policy, not a bug, but worth flagging to the user if it produces
-     a big swing (e.g. it visibly compresses high scores upward too, not
-     just low ones) — and remember that a student who aces required work
-     *and* extra credit can end up well over 100%; that's intentional here
-     (capped only informally, by keeping extra-credit point values small
-     relative to the required total — see `rubric.md`), not a bug either.
+     reach 100%. It is excluded from `W` in the `Name` arithmetic above
+     for the same reason: a student who skips every bonus problem must
+     still reach the floor from required work alone. This does mean a
+     student who aces the required work *and* the extra credit can finish
+     well over 100% — intentional here, capped only informally by keeping
+     extra-credit point values small relative to the required total (see
+     `rubric.md`).
    - **Penalties are still floor-protected (confirmed with the user on
-     2026-10-19).** The `Name` points guarantee the floor for the
-     *unpenalized, required-only* score, but a late penalty or other
-     deduction applied as an `adjustments` entry can still pull the net
-     score below 53% on its own (e.g. 74 Name points minus a 6-point late
-     penalty, with little else earned on required problems). After
-     computing the student's full score — `Name` + every required problem
-     section + every adjustment, including penalties (extra credit can
-     help here too, but don't rely on it) — check it against the same
-     floor used to derive `Name` in the first place (for the current
-     trigonometry rubric: `ceil(139 × 0.53)` = 74; this will always equal
-     `Name`'s own point value for whichever rubric is active, since `Name`
-     was chosen to be the smallest integer clearing that exact threshold —
-     recompute this per-rubric, don't reuse 74 for a future quiz). If the
-     penalized net total is still below that floor, add one more
-     `adjustments` entry that brings it back up to exactly the floor,
-     labeled plainly (e.g. `"Grade floor: raised from 43/92 to 49/92
-     (minimum 53%, district policy)"`), the same way the old mechanism
-     used to for the whole score. In other words: `Name`
-     handles the floor for a normal (non-penalized) submission by itself,
-     with no adjustment needed; a floor-topup `adjustments` entry is only
-     ever needed in the less-common case where a penalty pushes the
-     penalized score below what `Name` alone guarantees.
+     2026-10-19).** `Name`'s points guarantee the floor for an
+     *unpenalized* score, but a late penalty or other deduction applied as
+     an `adjustments` entry can still pull the net score below 53% on its
+     own (a student who earns the `Name` points, little else, and then
+     takes a late penalty). After computing the student's full score —
+     `Name` + every required problem section + every adjustment, penalties
+     included (extra credit can help here too, but don't rely on it) —
+     compare it against the floor in points, which is just `N`, `Name`'s
+     own value for the active rubric (see the derivation above; recompute
+     per-rubric, never reuse a prior quiz's number). If the penalized net
+     total is below `N`, add one more `adjustments` entry bringing it back
+     up to exactly `N`, labeled plainly — continuing the `N` = 113,
+     required total 213 example, a student at 115 points who takes a
+     10-point late penalty nets 105, so:
+
+         {"label": "Grade floor: raised from 105/213 to 113/213 (minimum 53%, district policy)", "points": 8}
+
+     In other words: `Name` handles the floor for a normal, non-penalized
+     submission by itself, with no adjustment needed; a floor-topup
+     `adjustments` entry is only ever needed in the less-common case where
+     a penalty pushes the net score below what `Name` alone already
+     guarantees.
 
 6. **Append the newly-graded student(s) to `results/grades.json`.** Don't
    hand-edit that file directly — write the new student(s) (one object, or
@@ -257,15 +350,18 @@ or re-render more than what's actually pending unless asked.
    duplicate or clobber an existing student — pass `--replace` only when
    you specifically intend to overwrite a prior entry (e.g. a regrade the
    user asked for). Schema is documented in the docstring at the top of
-   `script/build_pdf.py`, and `results/grades.json` (if present) is a
-   complete worked example — read it before writing a new fragment.
+   `script/build_pdf.py`, with a filled-in example in
+   `script/grades.example.json` (and `results/grades.json`, once it
+   exists, as the live one) — read one before writing a new fragment.
    Briefly: each student has `sections` (an inline "Header" section plus
    one "checklist" section per rubric problem, each with `criteria` of
    `{label, points, earned, correct_answer?, their_answer?}`, an optional
    per-section `why`, an optional per-section `response` for a zero-point
    section — see the grading-fidelity bullet above — and an optional
    per-section `extra_credit: true` for a bonus problem per the current
-   rubric's required/extra-credit split), an optional `adjustments` list
+   rubric's required/extra-credit split), an optional `"form"` naming the
+   printed form that student sat (set it whenever the quiz has more than
+   one — see step 5), an optional `adjustments` list
    (e.g. the late penalty), and free-text `notes` for *whole-student* context
    (security flags, name-legibility caveats, cross-problem observations)
    — per-problem point-loss reasons go in that section's `why`, not here.
@@ -478,21 +574,26 @@ students if they want it precise.
 ## Archiving a finished quiz
 
 Once a quiz is fully graded and the user is done with it, `images/`,
-`results/`, and `rubric.md` can be moved out of the way to make room for
-the next one:
+`results/`, `assessment/`, and `rubric.md` can be moved out of the way to
+make room for the next one:
 ```
 python3 script/archive_quiz.py <name>
 ```
 Moves everything into `archive_<name>/` (as `archive_<name>/images/`,
-`archive_<name>/results/`, `archive_<name>/rubric.md`) and leaves fresh
-empty `images/`/`results/` directories and an empty `rubric.md` behind,
-ready for the next quiz's rubric to be written into. Refuses to run if
+`archive_<name>/results/`, `archive_<name>/assessment/`,
+`archive_<name>/rubric.md`) and leaves fresh empty
+`images/`/`results/`/`assessment/` directories and an empty `rubric.md`
+behind, ready for the next quiz's source and rubric. Refuses to run if
 `archive_<name>/` already exists, so it never silently overwrites a
 previous archive. Only do this when the user asks to archive/finish up a
 quiz, not as part of routine grading — it's a project-reorganizing step,
 not a grading step. `rosters/` is deliberately left out of this move —
 rosters track students, not individual quizzes, so they stay in place
-across every archive.
+across every archive. `assessment/` *is* moved, since the converted quiz
+forms and answer keys belong to the quiz being archived. Each of
+`images/`, `results/` and `assessment/` keeps a git-tracked
+`.placeholder`; the script restores it after archiving, so archiving never
+shows up as a deletion of tracked files.
 
 ## Scaling to a full class (many students, one session)
 

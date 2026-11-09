@@ -51,7 +51,7 @@ def esc(s):
 def section_bucket(section):
     criteria = section.get("criteria", [])
     total = sum(c["points"] for c in criteria)
-    earned = sum(c["points"] for c in criteria if c["earned"])
+    earned = sum(c["points"] for c in criteria if c.get("earned"))
     if total == 0:
         return None
     if earned == total:
@@ -67,7 +67,14 @@ def section_bucket(section):
 
 
 def collect(students):
-    """Returns (section_labels_in_order, {label: {bucket: count}}, untagged_zero_count)."""
+    """Returns (section_labels_in_order, {label: {bucket: count}}, untagged_zero_count).
+
+    untagged_zero_count is how many zero-credit sections carried no
+    "response" tag and so fell into the "wrong" bucket by default. It
+    drives the caveat on the report: if grading predated that tag (or
+    applied it inconsistently), those sections may really be blank or
+    off-topic, and the blank/off-topic split is understated by that much.
+    """
     order = []
     counts = OrderedDict()
     untagged_zero = 0
@@ -83,7 +90,9 @@ def collect(students):
                 counts[label] = {b: 0 for b in BUCKETS}
                 order.append(label)
             counts[label][bucket] += 1
-    return order, counts
+            if bucket == "wrong":
+                untagged_zero += 1
+    return order, counts, untagged_zero
 
 
 def render_bar(label, counts, n_students):
@@ -138,11 +147,25 @@ h1 { font-size: 15pt; margin: 0 0 2px 0; }
 
 def build(data, n_students):
     students = data["students"]
-    order, counts = collect(students)
+    order, counts, untagged_zero = collect(students)
     base_title = data.get("title", "Grading Results")
     base_title = base_title.rsplit(" — Grading Results", 1)[0]
     title = base_title + " — Problem Breakdown"
     rows = "".join(render_bar(label, counts[label], n_students) for label in order)
+    if untagged_zero:
+        caveat = (
+            f"Blank vs. off-topic vs. wrong is read from each section's optional "
+            f'"response" tag in grades.json. {untagged_zero} zero-credit section(s) here '
+            f'carry no tag and are counted as "wrong" by default — if that tag was not set '
+            f"consistently while grading, some of those are really blank or off-topic, and "
+            f'those two buckets are understated by up to that much. See CLAUDE.md\'s '
+            f'"Problem-by-problem breakdown" note.'
+        )
+    else:
+        caveat = (
+            'Every zero-credit section carries an explicit "response" tag, so the '
+            "blank / off-topic / wrong split below is exact."
+        )
     return f"""
     <html><head><meta charset="utf-8"><style>{CSS}</style></head>
     <body>
@@ -150,13 +173,10 @@ def build(data, n_students):
     <div class="sub">What percentage of the class left each problem blank, wrote something
     off-topic, got it wrong, got it partially correct, or got it fully correct
     ({n_students} student(s)).</div>
-    <div class="caveat">Blank vs. off-topic vs. wrong is read from each section's optional
-    "response" tag in grades.json; a section with no tag and no credit earned is counted as
-    "wrong" by default. See CLAUDE.md's "Problem-by-problem breakdown" note if that tag wasn't
-    consistently set while grading.</div>
+    <div class="caveat">{caveat}</div>
     {rows}
     </body></html>
-    """
+    """, untagged_zero
 
 
 def main():
@@ -175,8 +195,16 @@ def main():
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    HTML(string=build(data, len(data["students"]))).write_pdf(out_path)
+    html_str, untagged_zero = build(data, len(data["students"]))
+    HTML(string=html_str).write_pdf(out_path)
     print(f"wrote {out_path} ({len(data['students'])} student(s))")
+    if untagged_zero:
+        print(
+            f'note: {untagged_zero} zero-credit section(s) have no "response" tag and were '
+            'counted as "wrong" — blank/off-topic may be undercounted (see CLAUDE.md).'
+        )
+    else:
+        print('all zero-credit sections are "response"-tagged — the blank/off-topic split is exact.')
 
 
 if __name__ == "__main__":

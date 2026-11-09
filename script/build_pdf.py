@@ -19,17 +19,26 @@ JSON schema (see script/grades.example.json for a filled-in example):
       // see script/pending_images.py --pages)
       "name": "Student Name",
       "name_uncertain": false,          // true if handwriting was hard to read
+      "form": "202610271",              // optional; which printed form/version
+                                        // this student took, when a quiz has
+                                        // several whose answers differ. Read it
+                                        // off the student's own page — see
+                                        // CLAUDE.md step 5.
       "sections": [
         {
           "label": "Header",
           "style": "inline",            // one compact line of chips + a detail string
           "detail": "Period 6 · 9/21/26 · AP Precalculus",
           "criteria": [
-            {"label": "Name",   "points": 17, "earned": true},
             {"label": "Date",   "points": 1,  "earned": true},
             {"label": "Period", "points": 1,  "earned": true},
             {"label": "Class",  "points": 1,  "earned": false}
           ]
+          // "Name" is NOT a header chip: it's its own checklist section
+          // (a single criterion labeled "Name") carrying the grade-floor
+          // points. See CLAUDE.md's grade-floor policy for why, and note
+          // that build_problem_report.py excludes the section labeled
+          // exactly "Name" from its per-problem breakdown.
         },
         {
           "label": "Prob 7 (bonus)",
@@ -279,6 +288,8 @@ def render_student(student):
         score_html = f'<div class="score"><span class="scoremain">{final_total} / {total_max}</span>{grade_html}</div>'
 
     name_flag = ' <span class="flag">(name spelling uncertain)</span>' if student.get("name_uncertain") else ""
+    form = student.get("form")
+    form_html = f'<span class="form">Form {esc(form)}</span>' if form else ""
     files = student_files(student)
     src = f'<span class="src">{esc(", ".join(files))}</span>' if files else ""
     notes = student.get("notes", "")
@@ -289,6 +300,7 @@ def render_student(student):
       <div class="toprow">
         <div class="who">
           <span class="name">{esc(student["name"])}</span>{name_flag}
+          {form_html}
           {src}
         </div>
         {score_html}
@@ -339,6 +351,7 @@ body { font-family: Helvetica, Arial, sans-serif; color: #111; font-size: 8.3pt;
 .toprow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; break-after: avoid-page; break-inside: avoid-page; }
 .name { font-size: 13pt; font-weight: bold; }
 .src { font-size: 7pt; color: #888; margin-left: 8px; }
+.form { font-size: 7.5pt; color: #1a5aa8; font-weight: bold; margin-left: 8px; }
 .flag { font-size: 7.5pt; color: #a15c00; font-style: italic; }
 .score { text-align: right; border: 1.5px solid #111; padding: 1px 10px; border-radius: 4px; line-height: 1.15; }
 .scoremain { font-size: 15pt; font-weight: bold; display: block; }

@@ -240,5 +240,12 @@ __marimo__/
 /archive_*/
 # Source assessment PDFs / answer keys in the project root
 /*.pdf
+# Uploaded assessment source and everything converted from it: the blank
+# quiz, the answer keys, and the per-page renders. extract_assessment.py
+# reads assessment/source/ and writes the rest of assessment/.
+/assessment/*
+!/assessment/.placeholder
+# Uploads commonly arrive as a zip of PDFs
+*.zip
 # Your real, quiz-specific rubric (rubric.md is only a generic template)
 rubric.local*.md

@@ -1,3 +1,13 @@
 Pillow
 pillow-heif
 weasyprint
+
+# System dependencies (not installable with pip):
+#
+#   poppler  — pdftotext, pdftoppm, pdfinfo; used by extract_assessment.py to
+#              convert an uploaded quiz/answer-key PDF into Markdown + page
+#              renders.  macOS: brew install poppler
+#              Debian/Ubuntu: apt install poppler-utils
+#
+#   weasyprint additionally needs pango/cairo on some platforms — see
+#   https://doc.courtbouillon.org/weasyprint/stable/first_steps.html

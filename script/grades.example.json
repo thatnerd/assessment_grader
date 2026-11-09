@@ -1,0 +1,200 @@
+{
+  "_readme": [
+    "Synthetic example of the results/grades.json schema — no real student data.",
+    "Referenced from script/build_pdf.py's docstring, which is the authoritative",
+    "schema reference. Renders with: python3 script/build_pdf.py --data",
+    "script/grades.example.json --out /tmp/example.pdf (likewise",
+    "build_sorted_grades.py and build_problem_report.py).",
+    "Numbers follow CLAUDE.md's grade-floor policy: required problems total W = 65",
+    "(Header 3 + 12 + 16 + 18 + 16), so Name = ceil(53*65/47) = 74 and the required",
+    "total is 74 + 65 = 139. A name alone is 74/139 = 53.2%, just clearing the 53%",
+    "floor; the 10-point bonus problem is excluded from that denominator.",
+    "Unknown top-level keys like this one are ignored by every script."
+  ],
+  "title": "Example Quiz: Degrees and Radians — Grading Results",
+  "cut_note": "Cut along dashed lines and staple each strip to the matching student's quiz.",
+  "students": [
+    {
+      "file": "IMG_0001.jpg",
+      "name": "Jordan Avery Example",
+      "name_uncertain": false,
+      "form": "202610271",
+      "sections": [
+        {
+          "label": "Name",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Name", "points": 74, "earned": true}
+          ]
+        },
+        {
+          "label": "Header",
+          "style": "inline",
+          "detail": "Period 6 · 9/21/26 · Example Precalculus",
+          "criteria": [
+            {"label": "Date", "points": 1, "earned": true},
+            {"label": "Period", "points": 1, "earned": true},
+            {"label": "Class", "points": 1, "earned": false}
+          ]
+        },
+        {
+          "label": "Prob 1: convert 45° to radians",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Multiplied by π/180", "points": 4, "earned": true},
+            {"label": "Correct answer: π/4", "points": 8, "earned": true}
+          ]
+        },
+        {
+          "label": "Prob 2: convert 3π/2 rad to degrees",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Multiplied by 180/π", "points": 6, "earned": true},
+            {
+              "label": "Correct answer: 270",
+              "points": 10,
+              "earned": false,
+              "correct_answer": "270°",
+              "their_answer": "135°"
+            }
+          ],
+          "why": "Dropped the factor of 2 in the numerator while simplifying."
+        },
+        {
+          "label": "Prob 3: arc length, r = 6, θ = π/3",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Used s = rθ", "points": 6, "earned": true},
+            {"label": "Substituted r and θ correctly", "points": 6, "earned": true},
+            {
+              "label": "Correct answer: 2π",
+              "points": 6,
+              "earned": false,
+              "correct_answer": "2π",
+              "their_answer": "6.28 (left as a decimal, exact form required)"
+            }
+          ],
+          "why": "Method and setup are right; rubric requires the exact form here."
+        },
+        {
+          "label": "Prob 4: coterminal angle for 400°",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Subtracted 360°", "points": 8, "earned": true},
+            {"label": "Answer boxed", "points": 8, "earned": false}
+          ]
+        },
+        {
+          "label": "Prob 5 (bonus): exact value of sin(7π/6)",
+          "style": "checklist",
+          "extra_credit": true,
+          "criteria": [
+            {"label": "Correct answer: -1/2", "points": 10, "earned": true}
+          ]
+        }
+      ],
+      "notes": "Strong work overall; reminder to box final answers."
+    },
+    {
+      "files": ["IMG_0002.jpg", "IMG_0003.jpg"],
+      "name": "R. Quill Example",
+      "name_uncertain": true,
+      "form": "202610272",
+      "sections": [
+        {
+          "label": "Name",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Name", "points": 74, "earned": true}
+          ]
+        },
+        {
+          "label": "Header",
+          "style": "inline",
+          "detail": "Period 6 · (no date) · (no class)",
+          "criteria": [
+            {"label": "Date", "points": 1, "earned": false},
+            {"label": "Period", "points": 1, "earned": true},
+            {"label": "Class", "points": 1, "earned": false}
+          ]
+        },
+        {
+          "label": "Prob 1: convert 45° to radians",
+          "style": "checklist",
+          "criteria": [
+            {"label": "Multiplied by π/180", "points": 4, "earned": true},
+            {
+              "label": "Correct answer: π/4",
+              "points": 8,
+              "earned": false,
+              "correct_answer": "π/4",
+              "their_answer": "45π/180 (never simplified)"
+            }
+          ],
+          "why": "Set it up correctly but stopped before simplifying."
+        },
+        {
+          "label": "Prob 2: convert 3π/2 rad to degrees",
+          "style": "checklist",
+          "response": "blank",
+          "criteria": [
+            {"label": "Multiplied by 180/π", "points": 6, "earned": false},
+            {
+              "label": "Correct answer: 270",
+              "points": 10,
+              "earned": false,
+              "correct_answer": "270°",
+              "their_answer": "blank"
+            }
+          ]
+        },
+        {
+          "label": "Prob 3: arc length, r = 6, θ = π/3",
+          "style": "checklist",
+          "response": "off_topic",
+          "criteria": [
+            {"label": "Used s = rθ", "points": 6, "earned": false},
+            {"label": "Substituted r and θ correctly", "points": 6, "earned": false},
+            {
+              "label": "Correct answer: 2π",
+              "points": 6,
+              "earned": false,
+              "correct_answer": "2π",
+              "their_answer": "re-copied Problem 1's conversion work"
+            }
+          ],
+          "why": "Nothing here engages with arc length."
+        },
+        {
+          "label": "Prob 4: coterminal angle for 400°",
+          "style": "checklist",
+          "criteria": [
+            {
+              "label": "Subtracted 360°",
+              "points": 8,
+              "earned": false,
+              "correct_answer": "400° − 360°",
+              "their_answer": "400° + 360°"
+            },
+            {"label": "Answer boxed", "points": 8, "earned": false}
+          ],
+          "why": "Added a full rotation instead of subtracting; no \"response\" tag needed — this was a genuine on-topic attempt, which is the default \"wrong\" bucket."
+        },
+        {
+          "label": "Prob 5 (bonus): exact value of sin(7π/6)",
+          "style": "checklist",
+          "extra_credit": true,
+          "response": "blank",
+          "criteria": [
+            {"label": "Correct answer: -1/2", "points": 10, "earned": false}
+          ]
+        }
+      ],
+      "adjustments": [
+        {"label": "late", "points": -10},
+        {"label": "Grade floor: raised from 69/139 to 74/139 (minimum 53%, district policy)", "points": 5}
+      ],
+      "notes": "First name illegible past the initial; best guess from the roster. Late penalty pulled the net score under the 53% floor, so a floor top-up was added — see CLAUDE.md's grade-floor policy."
+    }
+  ]
+}
