@@ -21,6 +21,10 @@ silently grouped — check those by hand. A leftover partial group at the
 end (image count not a multiple of N) is also flagged, not silently
 dropped or silently padded.
 
+Only .jpg/.jpeg files count as pages. Hidden files (e.g. the directory's
+git-tracked .placeholder) are skipped; raw formats extract_images.py still
+needs to convert are listed separately; any other file is listed as ignored.
+
 Exit status: 0 always (this is an informational tool, not a check/gate);
 use --porcelain for a script-friendly list: one pending unit per line,
 filenames comma-separated for a multi-page group (empty output means
@@ -32,7 +36,12 @@ import re
 import sys
 from pathlib import Path
 
-RAW_EXTS = {".heic", ".heif"}
+# Must match script/extract_images.py's RAW_EXTS / JPEG_EXTS (duplicated
+# rather than imported, since that module needs Pillow at import time):
+# extract_images.py turns every RAW_EXTS file into a .jpg, so only JPEGs are
+# gradable pages, and anything in RAW_EXTS still awaits extraction.
+RAW_EXTS = {".heic", ".heif", ".png", ".tif", ".tiff", ".bmp", ".webp"}
+PAGE_EXTS = {".jpg", ".jpeg"}
 TRAILING_NUM = re.compile(r"(\d+)(?=\D*$)")
 
 
@@ -73,9 +82,17 @@ def main():
 
     done = graded_files(Path(args.data))
 
-    all_files = sorted(p for p in images_dir.iterdir() if p.is_file())
+    # Hidden files (the git-tracked .placeholder, .DS_Store, ...) are never
+    # pages — counting one would shift every --pages N group after it.
+    all_files = sorted(p for p in images_dir.iterdir() if p.is_file() and not p.name.startswith("."))
     raw_pending = [p.name for p in all_files if p.suffix.lower() in RAW_EXTS]
-    image_names = [p.name for p in all_files if p.suffix.lower() not in RAW_EXTS]
+    image_names = [p.name for p in all_files if p.suffix.lower() in PAGE_EXTS]
+    ignored = [p.name for p in all_files if p.suffix.lower() not in RAW_EXTS | PAGE_EXTS]
+    if ignored and not args.porcelain:
+        print(f"⚠ ignoring {len(ignored)} non-image file(s) in {images_dir} (not counted as pages):")
+        for name in ignored:
+            print(f"  {name}")
+        print()
 
     if args.pages == 1:
         groups = [[name] for name in image_names]
